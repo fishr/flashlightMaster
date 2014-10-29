@@ -26,16 +26,17 @@ void setup(){
 }
 
 void loop(){
-  while(digitalRead(IRQ)==HIGH){
+  if(digitalRead(IRQ)==LOW){
     //Serial.println(readReg(0x1D));
     //Serial.println(readReg(0x00));
     //delay(10);
-  }
+  
   if(0b01000000&readReg(0x07)){
     byte indata = readrf();
     Serial.println(indata);
   }else{
     Serial.println("oops!");
+  }
   }
 }
 
