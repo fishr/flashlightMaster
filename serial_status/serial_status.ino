@@ -15,10 +15,10 @@ boolean inputReady = false;
 int flashCharging = -1;
 int battCharging = -1;
 // These two variables are used to determine the timeout for charging
-long flashChargeFrame = 0;
-long battChargeFrame = 0;
-// How long between the flashlight charge detection and the battery charge detection, in frames, that can pass before charging is invalid
-long chargeFrameLimit = 300;
+long flashChargeMilli = 0;
+long battChargeMilli = 0;
+// How long between the flashlight charge detection and the battery charge detection, in millis, that can pass before charging is invalid
+long chargeMilliLimit = 5000;
 
 // Use this function to set a flashlight's battery level
 // Note that this is different from setting flashBatts to a received value
@@ -32,33 +32,61 @@ void setFlashBattLevel(int i, int val)
   }
 }
 
-// Use this function to respond to charge a flashlight with a battery
+
+// Use this function to charge a flashlight with a battery, i.e. set in TX mode
 void chargeFlash(int i, int j)
 {
   if (i >= 0 && i < numFlashlights && j >= 0 && j < numBatteries)
   {
+    Serial.println("charging f" + String(i) + " b" + String(j));
     setFlashBattLevel(i, 255);
     battState[i][j] = 'X';
   }
 }
 
+// Try to charge a flashlight if battery and flashlight are set properly
+void tryCharge()
+{
+  // Check whether or not a flashlight/battery pair should be used
+  if (flashCharging >= 0 && battCharging >= 0 && flashCharging < numFlashlights && battCharging < numBatteries)
+  {
+    if (max(flashChargeMilli, battChargeMilli) - min(flashChargeMilli, battChargeMilli) < chargeMilliLimit)
+    {
+      if (battState[flashCharging][battCharging] == '-')
+      {
+        chargeFlash(flashCharging, battCharging);
+        flashCharging = -1;
+        battCharging = -1;
+      }
+    }
+  }
+}
+
+// Set it so that the flashlight was detected as charging
 void setFlashCharging(int i)
 {
   if (i >= 0 && i < numFlashlights)
   {
+    Serial.println("charging f" + String(i));
     flashCharging = i;
-    flashChargeFrame = frame;
+    flashChargeMilli = millis();
+    tryCharge();
   }
 }
 
+// Set it so that the battery was detected as charging
 void setBattCharging(int j)
 {
   if (j >= 0 && j < numBatteries)
   {
+    Serial.println("charging b" + String(j));
     battCharging = j;
-    battChargeFrame = frame;
+    battChargeMilli = millis();
+    tryCharge();
   }
 }
+
+
 
 void setup()
 {
@@ -149,20 +177,6 @@ void loop()
       if (flashBatts[i] > 0)
       {
         flashBatts[i] -= 1;
-      }
-    }
-  }
-  
-  // Check whether or not a flashlight/battery pair should be used
-  if (flashCharging >= 0 && battCharging >= 0 && flashCharging < numFlashlights && battCharging < numBatteries)
-  {
-    if (abs(flashChargeFrame - battChargeFrame) < chargeFrameLimit)
-    {
-      if (battState[flashCharging][battCharging] == '-')
-      {
-        chargeFlash(flashCharging, battCharging);
-        flashCharging = -1;
-        battCharging = -1;
       }
     }
   }
