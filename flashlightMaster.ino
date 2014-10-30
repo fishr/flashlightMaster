@@ -5,6 +5,10 @@ int CE=8;
 int IRQ=9;
 int CSN=10;
 
+byte addrRequest = 128;
+
+byte receivers = 0;
+
 void setup(){
   delay(1000);
   pinMode(IRQ, INPUT);
@@ -30,13 +34,40 @@ void loop(){
     //Serial.println(readReg(0x1D));
     //Serial.println(readReg(0x00));
     //delay(10);
-  
-  if(0b01000000&readReg(0x07)){
-    byte indata = readrf();
-    Serial.println(indata);
-  }else{
-    Serial.println("oops!");
-  }
+    byte statreg = readReg(0x07);
+    if(0b01000000&statreg){
+      byte indata = readrf();
+      byte pipenum=(statreg>>1)&x0F;
+      if(indata==addrRequest){
+        byte i =0;
+        byte temp = receivers;
+        while(temp&1){
+          temp>>1;
+          i++;
+        }
+        receivers = receivers|(1<<i);
+        delayMicroseconds(200);
+        digitalWrite(CE, LOW);
+        writeReg(0x00,0b00001110); //powerup
+        digitalWrite(CE, HIGH);
+        byte flag=0;
+        while(!flag){
+          transmit(i);  
+          while(digitalRead(IRQ)==HIGH){}
+          byte statreg = readReg(0x07);
+          if(0b00100000&statreg){
+            flag=1;
+          }
+        }
+        digitalWrite(CE, LOW);
+        writeReg(0x00,0b00001111); //powerup
+        digitalWrite(CE, HIGH);
+      }else{
+        Serial.println(indata);
+      }
+    }else{
+      Serial.println("oops!");
+    }
   }
 }
 
