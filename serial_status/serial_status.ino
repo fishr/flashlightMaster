@@ -1,4 +1,4 @@
-const int numFlashlights = 4;
+const int numFlashlights = 3;
 const int numBatteries = 3;
 
 volatile int flashBatts[numFlashlights];
@@ -21,6 +21,8 @@ long battChargeFrame = 0;
 long chargeFrameLimit = 300;
 
 // Use this function to set a flashlight's battery level
+// Note that this is different from setting flashBatts to a received value
+// this is syncing both master and slave to the same value
 void setFlashBattLevel(int i, int val)
 {
   if (i >= 0 && i < numFlashlights && val >= 0 && val < 256)
@@ -77,34 +79,68 @@ void loop()
 {
   if (inputReady)
   {
+    Serial.print(inputString);
+    
+    // Show status
+    if (inputString.startsWith("ls"))
+    {
+      Serial.println("Flashlights:");
+      for (int i = 0; i < numFlashlights; ++i)
+      {
+        Serial.print(i);
+  
+        // Print which batteries have been taken
+        Serial.print(' ');
+        for (int j = 0; j < numBatteries; ++j)
+        {
+          Serial.print(battState[i][j]);
+        }
+        
+        // Print what the flashlight power level is
+        Serial.print(" [");
+        
+        for (int level = 0; level < 250; level += 50)
+        {
+          if (level < flashBatts[i])
+          {
+            Serial.print("|");
+          }
+          else
+          {
+            Serial.print(" ");
+          }
+        }
+        
+        Serial.println("]");
+      }
+    }
     // Flashlight Set battery Level
     // fsl [i] [level]
-    if (inputString.startsWith("fsl"))
+    else if (inputString.startsWith("fsl"))
     {
       int i = inputString.substring(4,5).toInt();
       int val = inputString.substring(6).toInt();
       setFlashBattLevel(i, val);
     }
-    // Flashlight Detect Magnet - simulates a transmission that a flashlight has detected a magnet
-    // fdm [i]
-    else if (inputString.startsWith("fdm"))
+    // Flashlight Detect Charging - simulates a transmission that a flashlight has detected a magnet
+    // fdc [i]
+    else if (inputString.startsWith("fdc"))
     {
       int i = inputString.substring(4,5).toInt();
       setFlashCharging(i);
     }
-    // Battery Detect Switch - simulates a battery switch being hit
-    // bds [j]
-    else if (inputString.startsWith("bds"))
+    // Battery Detect Charging - simulates a battery switch being hit
+    // bdc [j]
+    else if (inputString.startsWith("bdc"))
     {
       int j = inputString.substring(4,5).toInt();
       setBattCharging(j);
     }
-    Serial.print(inputString);
     inputString = "";
     inputReady = false;
   }
 
-  // Every discharge cycle, discharge and show results
+  // Every discharge cycle, discharge. This is temp
   if (frame % battDischargeFrames == 0)
   {
     // Note; it's kind of complicated to have the flashlights update the master with their battery level, so just simulate it.
@@ -115,26 +151,6 @@ void loop()
         flashBatts[i] -= 1;
       }
     }
-    
-    Serial.println("Flashlights:");
-    for (int i = 0; i < numFlashlights; ++i)
-    {
-      Serial.print(i);
-
-      // Print which batteries have been taken
-      Serial.print(' ');
-      for (int j = 0; j < numBatteries; ++j)
-      {
-        Serial.print(battState[i][j]);
-      }
-      
-      // Print what the flashlight power level is
-      Serial.print(' ');
-      Serial.print(flashBatts[i]);
-      
-      Serial.println();
-    }
-    
   }
   
   // Check whether or not a flashlight/battery pair should be used
