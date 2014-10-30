@@ -20,6 +20,9 @@ long battChargeMilli = 0;
 // How long between the flashlight charge detection and the battery charge detection, in millis, that can pass before charging is invalid
 long chargeMilliLimit = 5000;
 
+const byte syncCode = 128;
+const byte blackoutCode = 64;
+
 // Use this function to set a flashlight's battery level
 // Note that this is different from setting flashBatts to a received value
 // this is syncing both master and slave to the same value
@@ -27,6 +30,15 @@ void setFlashBattLevel(int i, int val)
 {
   if (i >= 0 && i < numFlashlights && val >= 0 && val < 256)
   {
+    if (val == syncCode)
+    {
+      ++val;
+    }
+    else if (val == blackoutCode)
+    {
+      ++val;
+    }
+    
     flashBatts[i] = val;
     // TODO: Transmit to flashlight
   }
@@ -164,6 +176,12 @@ void loop()
       int j = inputString.substring(4,5).toInt();
       setBattCharging(j);
     }
+    // BlackOut
+    // bo
+    else if (inputString.startsWith("bo"))
+    {
+      // TODO: Transmit a blackout bit to all flashlights
+    }
     inputString = "";
     inputReady = false;
   }
@@ -198,3 +216,4 @@ void serialEvent()
     }
   }
 }
+
